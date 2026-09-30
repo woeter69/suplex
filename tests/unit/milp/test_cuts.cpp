@@ -1,5 +1,7 @@
 /// Unit tests for the Cut generators.
 #include <gtest/gtest.h>
+#include <numeric>
+#include <cmath>
 #include "milp/cuts.h"
 #include "core/problem.h"
 #include "core/solution.h"
@@ -144,7 +146,8 @@ TEST(CutGenerator, CliqueCutFromClique) {
     EXPECT_GE(cuts.size(), 1u);
     if (!cuts.empty()) {
         EXPECT_EQ(cuts[0].type, CutType::CLIQUE);
-        EXPECT_NEAR(cuts[0].rhs, 1.0, 1e-9);
+        EXPECT_NEAR(cuts[0].rhs, -1.0, 1e-9);
+        EXPECT_NEAR(cuts[0].coefficients[0], -1.0, 1e-9);
         EXPECT_EQ(cuts[0].indices.size(), 3u);
     }
 }

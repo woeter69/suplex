@@ -107,9 +107,9 @@ private:
     // Each returns true if the problem was changed.
 
     bool reduce_empty_rows         (Problem& p, PresolveStack& s, bool& infeasible);
-    bool reduce_fixed_variables    (Problem& p, PresolveStack& s);
+    bool reduce_fixed_variables    (Problem& p, PresolveStack& s, Real& obj_offset);
     bool reduce_singleton_rows     (Problem& p, PresolveStack& s, bool& infeasible);
-    bool reduce_singleton_cols     (Problem& p, PresolveStack& s);
+    bool reduce_singleton_cols     (Problem& p, PresolveStack& s, Real& obj_offset);
     bool reduce_forcing_rows       (Problem& p, PresolveStack& s, bool& infeasible);
     bool reduce_dominated_cols     (Problem& p, PresolveStack& s);
     bool reduce_duplicate_rows     (Problem& p, PresolveStack& s);
