@@ -159,10 +159,10 @@ Cut CutGenerator::mir_from_row(const std::vector<Real>& row_coeffs,
 
         if (std::abs(mir_coeff) > EPS_ZERO) {
             cut.indices.push_back(j);
-            cut.coefficients.push_back(mir_coeff);
+            cut.coefficients.push_back(-mir_coeff);
         }
     }
-    cut.rhs = std::floor(rhs);
+    cut.rhs = -std::floor(rhs);
     return cut;
 }
 
@@ -173,6 +173,13 @@ std::vector<Cut> CutGenerator::mir_cuts(const Problem&  p,
     const auto& A  = p.constraint_matrix();
     const auto& ru = p.row_upper();
 
+    std::vector<std::vector<std::pair<Index, Real>>> A_rows(p.num_rows());
+    for (Index j = 0; j < p.num_cols(); ++j) {
+        for (Index k = A.col_begin(j); k < A.col_end(j); ++k) {
+            A_rows[A.row_index[k]].emplace_back(j, A.values[k]);
+        }
+    }
+
     for (Index i = 0; i < p.num_rows(); ++i) {
         // Try the <= form of each constraint: Σ a_ij x_j <= ru[i]
         if (ru[i] >= INF) continue;
@@ -180,9 +187,9 @@ std::vector<Cut> CutGenerator::mir_cuts(const Problem&  p,
         std::vector<Real>  row_coeffs;
         std::vector<Index> col_map;
 
-        for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-            col_map.push_back(A.row_index[k]);
-            row_coeffs.push_back(A.values[k]);
+        for (const auto& entry : A_rows[i]) {
+            col_map.push_back(entry.first);
+            row_coeffs.push_back(entry.second);
         }
 
         Cut cut = mir_from_row(row_coeffs, col_map, ru[i], p, lp_sol);
@@ -245,6 +252,13 @@ std::vector<Cut> CutGenerator::cover_cuts(const Problem&  p,
     const auto& vt = p.var_types();
     const auto& cu = p.col_upper();
 
+    std::vector<std::vector<std::pair<Index, Real>>> A_rows(p.num_rows());
+    for (Index j = 0; j < p.num_cols(); ++j) {
+        for (Index k = A.col_begin(j); k < A.col_end(j); ++k) {
+            A_rows[A.row_index[k]].emplace_back(j, A.values[k]);
+        }
+    }
+
     for (Index i = 0; i < p.num_rows(); ++i) {
         if (ru[i] >= INF) continue;
 
@@ -252,13 +266,14 @@ std::vector<Cut> CutGenerator::cover_cuts(const Problem&  p,
         std::vector<Index> bin_vars;
         std::vector<Real>  bin_coeffs;
 
-        for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-            Index j = A.row_index[k];
+        for (const auto& entry : A_rows[i]) {
+            Index j = entry.first;
+            Real aij = entry.second;
             if (vt[j] != VarType::BINARY &&
                 !(vt[j] == VarType::INTEGER && cu[j] <= 1.0 + EPS_ZERO)) continue;
-            if (A.values[k] <= 0) continue;   // only positive coefficients
+            if (aij <= 0) continue;   // only positive coefficients
             bin_vars.push_back(j);
-            bin_coeffs.push_back(A.values[k]);
+            bin_coeffs.push_back(aij);
         }
 
         if (bin_vars.size() < 2) continue;
@@ -269,11 +284,11 @@ std::vector<Cut> CutGenerator::cover_cuts(const Problem&  p,
         // Build cover cut: Σ_{k in cover} x_{bin_vars[k]} <= |cover| - 1
         Cut cut;
         cut.type = CutType::COVER;
-        cut.rhs  = static_cast<Real>(cover_idx.size()) - 1.0;
+        cut.rhs  = -(static_cast<Real>(cover_idx.size()) - 1.0);
 
         for (Index k : cover_idx) {
             cut.indices.push_back(bin_vars[k]);
-            cut.coefficients.push_back(1.0);
+            cut.coefficients.push_back(-1.0);
         }
 
         // Lift non-cover binary variables
@@ -287,7 +302,7 @@ std::vector<Cut> CutGenerator::cover_cuts(const Problem&  p,
                                              k, bin_coeffs[k], ru[i]);
             if (alpha > EPS_ZERO) {
                 cut.indices.push_back(bin_vars[k]);
-                cut.coefficients.push_back(alpha);
+                cut.coefficients.push_back(-alpha);
             }
         }
 
@@ -311,6 +326,13 @@ std::vector<Cut> CutGenerator::clique_cuts(const Problem&  p,
     const auto& vt = p.var_types();
     const auto& cu = p.col_upper();
 
+    std::vector<std::vector<std::pair<Index, Real>>> A_rows(p.num_rows());
+    for (Index j = 0; j < p.num_cols(); ++j) {
+        for (Index k = A.col_begin(j); k < A.col_end(j); ++k) {
+            A_rows[A.row_index[k]].emplace_back(j, A.values[k]);
+        }
+    }
+
     // Simple clique detection: find rows where all binary vars sum to <= 1
     for (Index i = 0; i < p.num_rows(); ++i) {
         if (ru[i] > 1.0 + EPS_ZERO) continue;
@@ -318,11 +340,12 @@ std::vector<Cut> CutGenerator::clique_cuts(const Problem&  p,
         // All coefficients must be 1.0 and all vars binary
         std::vector<Index> clique;
         bool valid = true;
-        for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-            Index j = A.row_index[k];
+        for (const auto& entry : A_rows[i]) {
+            Index j = entry.first;
+            Real aij = entry.second;
             if ((vt[j] != VarType::BINARY &&
                  !(vt[j] == VarType::INTEGER && cu[j] <= 1.0 + EPS_ZERO)) ||
-                std::abs(A.values[k] - 1.0) > EPS_ZERO) {
+                std::abs(aij - 1.0) > EPS_ZERO) {
                 valid = false; break;
             }
             clique.push_back(j);
@@ -332,10 +355,10 @@ std::vector<Cut> CutGenerator::clique_cuts(const Problem&  p,
         // The constraint itself IS the clique cut — check if violated
         Cut cut;
         cut.type = CutType::CLIQUE;
-        cut.rhs  = 1.0;
+        cut.rhs  = -1.0;
         for (Index j : clique) {
             cut.indices.push_back(j);
-            cut.coefficients.push_back(1.0);
+            cut.coefficients.push_back(-1.0);
         }
 
         Real eff = compute_efficacy(cut, lp_sol);

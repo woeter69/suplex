@@ -37,11 +37,11 @@ PresolveResult Presolve::apply(const Problem& original) {
         changed |= reduce_empty_rows        (p, result.stack, infeasible);
         if (infeasible) { result.is_infeasible = true; return result; }
 
-        changed |= reduce_fixed_variables   (p, result.stack);
+        changed |= reduce_fixed_variables   (p, result.stack, result.obj_offset);
         changed |= reduce_singleton_rows    (p, result.stack, infeasible);
         if (infeasible) { result.is_infeasible = true; return result; }
 
-        changed |= reduce_singleton_cols    (p, result.stack);
+        changed |= reduce_singleton_cols    (p, result.stack, result.obj_offset);
         changed |= reduce_forcing_rows      (p, result.stack, infeasible);
         if (infeasible) { result.is_infeasible = true; return result; }
 
@@ -203,7 +203,7 @@ bool Presolve::reduce_empty_rows(Problem& p, PresolveStack& s, bool& infeasible)
 
 // ── Reduction: Fixed variables ────────────────────────────────────────────────
 
-bool Presolve::reduce_fixed_variables(Problem& p, PresolveStack& s) {
+bool Presolve::reduce_fixed_variables(Problem& p, PresolveStack& s, Real& obj_offset) {
     const auto& cl = p.col_lower();
     const auto& cu = p.col_upper();
     const auto& A  = p.constraint_matrix();
@@ -216,7 +216,6 @@ bool Presolve::reduce_fixed_variables(Problem& p, PresolveStack& s) {
     std::vector<Real> new_rl = p.row_lower();
     std::vector<Real> new_ru = p.row_upper();
     std::vector<Real> new_c  = p.objective();
-    Real obj_offset = 0.0;
 
     for (Index j = 0; j < p.num_cols(); ++j) {
         if (!nearly_equal(cl[j], cu[j])) continue;   // not fixed
@@ -340,7 +339,8 @@ bool Presolve::reduce_singleton_rows(Problem& p, PresolveStack& s, bool& infeasi
 
 // ── Reduction: Singleton columns ──────────────────────────────────────────────
 
-bool Presolve::reduce_singleton_cols(Problem& p, PresolveStack& s) {
+bool Presolve::reduce_singleton_cols(Problem& p, PresolveStack& s, Real& obj_offset) {
+    return false; // Disabled due to constraint violation bug
     const auto& A  = p.constraint_matrix();
     const auto& cl = p.col_lower();
     const auto& cu = p.col_upper();
@@ -352,7 +352,6 @@ bool Presolve::reduce_singleton_cols(Problem& p, PresolveStack& s) {
     std::vector<bool> col_active(p.num_cols(), true);
     std::vector<bool> row_active(p.num_rows(), true);
     std::vector<Real> new_rl = rl, new_ru = ru;
-    Real obj_offset = 0.0;
 
     for (Index j = 0; j < p.num_cols(); ++j) {
         if (A.col_length(j) != 1) continue;
@@ -434,6 +433,14 @@ bool Presolve::reduce_forcing_rows(Problem& p, PresolveStack& s, bool& infeasibl
     std::vector<bool> row_active(p.num_rows(), true);
     std::vector<Real> new_cl = cl, new_cu = cu;
 
+    // Build row representation to iterate over rows
+    std::vector<std::vector<std::pair<Index, Real>>> A_rows(p.num_rows());
+    for (Index j = 0; j < p.num_cols(); ++j) {
+        for (Index k = A.col_begin(j); k < A.col_end(j); ++k) {
+            A_rows[A.row_index[k]].emplace_back(j, A.values[k]);
+        }
+    }
+
     for (Index i = 0; i < p.num_rows(); ++i) {
         // Infeasibility check
         if (min_act[i] > ru[i] + EPS_FEASIBILITY ||
@@ -442,15 +449,15 @@ bool Presolve::reduce_forcing_rows(Problem& p, PresolveStack& s, bool& infeasibl
             return true;
         }
 
-        // Forcing to upper bound (max_activity <= row_upper)
-        if (max_act[i] <= ru[i] + EPS_FEASIBILITY) {
+        // Forcing to upper bound: max_activity == row_lower
+        if (!is_inf(-rl[i]) && max_act[i] <= rl[i] + EPS_FEASIBILITY) {
             PresolveRecord rec;
             rec.rule    = PresolveRuleType::FORCING_ROW;
             rec.row_idx = i;
 
-            for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-                Index j   = A.row_index[k];
-                Real  aij = A.values[k];
+            for (const auto& entry : A_rows[i]) {
+                Index j   = entry.first;
+                Real  aij = entry.second;
                 Real  fix = (aij > 0) ? cu[j] : cl[j];
                 rec.affected_cols.push_back(j);
                 rec.saved_col_lbs.push_back(cl[j]);
@@ -464,15 +471,15 @@ bool Presolve::reduce_forcing_rows(Problem& p, PresolveStack& s, bool& infeasibl
             continue;
         }
 
-        // Forcing to lower bound (min_activity >= row_lower)
-        if (min_act[i] >= rl[i] - EPS_FEASIBILITY) {
+        // Forcing to lower bound: min_activity == row_upper
+        if (!is_inf(ru[i]) && min_act[i] >= ru[i] - EPS_FEASIBILITY) {
             PresolveRecord rec;
             rec.rule    = PresolveRuleType::FORCING_ROW;
             rec.row_idx = i;
 
-            for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-                Index j   = A.row_index[k];
-                Real  aij = A.values[k];
+            for (const auto& entry : A_rows[i]) {
+                Index j   = entry.first;
+                Real  aij = entry.second;
                 Real  fix = (aij > 0) ? cl[j] : cu[j];
                 rec.affected_cols.push_back(j);
                 rec.saved_col_lbs.push_back(cl[j]);
@@ -521,9 +528,9 @@ bool Presolve::tighten_implied_bounds(Problem& p, PresolveStack& s, bool& infeas
             Real contrib_min = (aij > 0) ? aij * cl[j] : aij * cu[j];
             Real contrib_max = (aij > 0) ? aij * cu[j] : aij * cl[j];
 
-            // Implied bounds from upper constraint:  aij * x_j <= ru[i] - (max_act[i] - contrib_max)
+            // Implied bounds from upper constraint:  aij * x_j <= ru[i] - (min_act[i] - contrib_min)
             if (!is_inf(ru[i])) {
-                Real slack = ru[i] - (max_act[i] - contrib_max);
+                Real slack = ru[i] - (min_act[i] - contrib_min);
                 // aij * x_j <= slack
                 if (aij > 0) {
                     Real impl_ub = slack / aij;
@@ -556,9 +563,9 @@ bool Presolve::tighten_implied_bounds(Problem& p, PresolveStack& s, bool& infeas
                 }
             }
 
-            // Implied bounds from lower constraint: aij * x_j >= rl[i] - (min_act[i] - contrib_min)
+            // Implied bounds from lower constraint: aij * x_j >= rl[i] - (max_act[i] - contrib_max)
             if (!is_inf(-rl[i])) {
-                Real slack = rl[i] - (min_act[i] - contrib_min);
+                Real slack = rl[i] - (max_act[i] - contrib_max);
                 if (aij > 0) {
                     Real impl_lb = slack / aij;
                     if (impl_lb > new_cl[j] + EPS_ZERO) {
@@ -647,11 +654,11 @@ bool Presolve::tighten_coefficients(Problem& p, PresolveStack& s) {
     // Access mutable versions through copies
     std::vector<Real> new_rl = rl, new_ru = ru;
 
-    for (Index i = 0; i < p.num_rows(); ++i) {
-        for (Index k = A.col_begin(i); k < A.col_end(i); ++k) {
-            Index j   = A.row_index[k];
+    for (Index j = 0; j < p.num_cols(); ++j) {
+        if (vt[j] != VarType::INTEGER && vt[j] != VarType::BINARY) continue;
+        for (Index k = A.col_begin(j); k < A.col_end(j); ++k) {
+            Index i   = A.row_index[k];
             Real  aij = A.values[k];
-            if (vt[j] != VarType::INTEGER && vt[j] != VarType::BINARY) continue;
             if (std::abs(aij) < EPS_ZERO) continue;
 
             // Example: a_ij * x_j <= rhs, x_j integer

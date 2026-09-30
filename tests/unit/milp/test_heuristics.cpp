@@ -30,9 +30,8 @@ public:
         static std::vector<Index> empty;
         return empty;
     }
-    const std::vector<Real>& get_farkas_ray() const override {
-        static std::vector<Real> empty;
-        return empty;
+    std::vector<Real> get_farkas_ray() const override {
+        return {};
     }
 };
 
@@ -107,8 +106,9 @@ TEST(Heuristics, SimpleRoundingRespectsBounds) {
 
     Heuristics h(nullptr);
     auto result = h.simple_rounding(p, lp_sol);
-    if (result.has_value())
+    if (result.has_value()) {
         EXPECT_LE(result->primal_values[0], 3.0 + 1e-8);
+    }
 }
 
 // ── Fractional diving ─────────────────────────────────────────────────────────

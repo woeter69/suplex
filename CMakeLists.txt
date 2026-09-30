@@ -12,7 +12,7 @@ option(SUPLEX_ENABLE_GPU "Enable CUDA acceleration" OFF)
 option(SUPLEX_BUILD_P3_GTESTS "Build Person 3 GoogleTest suites when available" ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Werror>)
+    add_compile_options(-Wall -Wextra -Werror)
 endif()
 
 add_library(suplex_core src/core/sparse_matrix.cpp src/core/problem.cpp src/core/solution.cpp)
