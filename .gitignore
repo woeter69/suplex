@@ -1,0 +1,7 @@
+build/
+bin/
+*.o
+*.a
+*.so
+.DS_Store
+graphify-out/.graphify_*
