@@ -5,7 +5,7 @@
 int main() {
     auto& registry = suplex::test::get_registry();
     std::cout << "========================================" << std::endl;
-    std::cout << "Running Suplex Person 1 Test Suite" << std::endl;
+    std::cout << "Running Suplex Test Suite" << std::endl;
     std::cout << "Total tests registered: " << registry.size() << std::endl;
     std::cout << "========================================" << std::endl;
 

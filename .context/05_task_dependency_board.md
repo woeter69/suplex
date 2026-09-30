@@ -25,3 +25,15 @@
 - [x] Task 5.1: `CMakeLists.txt` for clean C++20 build with `-Wall -Wextra -Werror`
 - [x] Task 5.2: Unit test suite covering all modules and edge cases (13/13 passing)
 - [x] Task 5.3: Graphify setup and generation of interactive visualizer and reports
+
+## Person 4 Integration
+
+- [x] MPS and LP parsers with diagnostics and names
+- [x] Solution writer and end-to-end CLI
+- [x] C++ facade, C API, and optional Python bindings
+- [x] CUDA SpMV/PCG with CPU fallback and device manager
+- [x] Benchmark runner, reference scaffolding, and download scripts
+- [x] Root CMake integration and cross-module tests
+- [x] Direct Makefile fallback and pure-C ABI client test
+- [ ] P2 IPM/QP dispatch (blocked: no P2 source exists on `origin/p2`)
+- [ ] LP/MILP presolve dispatch (blocked: P3 postsolve mapping and binary presolve are incomplete)

@@ -1,17 +1,29 @@
 # Active Session Snapshot
 
-- **Timestamp / Session Index**: 2026-09-30T14:28:40Z
-- **Tasks Completed in this Turn**:
-  - Cloned repository `suplex` from GitHub.
-  - Analyzed problem statement, system architecture, contracts, and Person 1 specifications.
-  - Initialized and maintained Autonomous Project Architect context hierarchy (`00_project_manifest.md` through `07_session_handoff.md`).
-  - Implemented Core Foundation: `src/core/types.h`, `src/core/sparse_matrix.h/cpp` (CSC/CSR/Triplet), `src/core/problem.h/cpp`, and `src/core/solution.h/cpp`.
-  - Implemented Numerical Linear Algebra Engine: `src/simplex/lu_factor.h/cpp` (Sparse LU factorization with Markowitz ordering, threshold partial pivoting, and FTRAN/BTRAN forward/backward solves), `src/simplex/lu_update.h/cpp` (Forrest-Tomlin/product-form Eta updates and refactorization heuristics).
-  - Implemented Simplex Infrastructure: `src/simplex/basis.h/cpp` (basis management, triangular crash procedure, logical slacks), `src/simplex/pricing.h/cpp` (Dantzig, Devex, Steepest Edge, Bland's rule).
-  - Implemented Solvers: `src/simplex/lp_solver.h` (abstract base class), `src/simplex/primal_simplex.h/cpp` (Revised Primal Simplex with bounded variables and Phase 1/Phase 2), and `src/simplex/dual_simplex.h/cpp` (Revised Dual Simplex with Harris ratio test and warm-start `solve_from_basis` for B&B).
-  - Configured C++20 build system with `-Wall -Wextra -Werror` in `CMakeLists.txt`.
-  - Implemented unit test suite covering all modules: 13/13 unit tests pass with zero errors and zero warnings.
-  - Set up and ran Graphify, producing `graphify-out/` with `graph.html`, `graph.json`, and `GRAPH_REPORT.md`.
-- **Current System State**: Fully functional, independently tested, clean Person 1 solver bedrock and linear algebra engine.
-- **Active Blockers / Edge Cases**: None. All edge cases (singular matrices, unbounded rays, infeasible constraints, cycling prevention, warm starts) handled and verified by unit tests.
-- **Immediate Next Action**: Provide summary report to user and hand off to Person 2 (IPM) and Person 3 (MILP).
+- **Branch:** `p4`
+- **Role completed:** Person 4 — I/O, APIs, GPU integration, CLI, build, and benchmarks.
+- **Implemented:** fixed/free MPS and LP readers, solution writer, C++ facade, C ABI,
+  pybind11 bindings, CLI, CUDA/CPU SpMV and PCG paths, benchmark runner/reference
+  scaffolding, dataset download scripts, sample fixtures, and root CMake integration.
+- **Integration fixes:** added the optional `LPSolver::get_farkas_ray()` contract required
+  by P3 and made the previously unwired P3 sources clean under `-Werror`.
+- **Verification:** 73/73 unit and integration tests pass; a pure C11 client compiles,
+  links, and solves successfully; the complete non-optional
+  C++ source tree, CLI, and benchmark runner compile with GCC under
+  `-std=c++20 -Wall -Wextra -Werror`; sanitizer run passes with LeakSanitizer disabled
+  because LSan is unavailable under the sandbox tracer.
+- **Environment limitation:** CMake, Make, and Ninja are not installed in this
+  environment, so the equivalent source sets were compiled directly with GCC. CUDA
+  and pybind11 are optional and their toolchains are not installed here.
+- **Upstream gap:** `origin/p2` has context only and no `src/ipm/` implementation.
+  IPM and QP requests therefore return an explicit unavailable diagnostic.
+- **Presolve caveat:** P3's postsolve stack lacks a complete original-to-reduced column
+  map and misclassifies a basic binary smoke problem. LP and MILP currently solve in
+  original space to preserve correct status, primal values, and objective values.
+
+## Next Integration Actions
+
+1. Merge the actual P2 IPM/QP implementation and enable its dispatch in `Suplex`.
+2. Complete P3 postsolve column mapping, then enable continuous-LP presolve dispatch.
+3. Validate optional builds on hosts with CMake 3.24+, pybind11, and CUDA 12+.
+4. Download full benchmark corpora and populate the complete reference CSV files.
