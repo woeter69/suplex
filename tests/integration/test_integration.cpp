@@ -152,6 +152,20 @@ void test_milp_end_to_end() {
 }
 REGISTER_TEST(test_milp_end_to_end);
 
+void test_milp_fractional_root_branches() {
+    Suplex solver;
+    TEST_ASSERT(solver.read_lp(fixture("branch_mip.lp")));
+    solver.set_algorithm(Algorithm::PRIMAL_SIMPLEX);
+    solver.set_log_level(LogLevel::OFF);
+    const SolverStatus status = solver.solve();
+    TEST_ASSERT(status == SolverStatus::OPTIMAL);
+    TEST_ASSERT_NEAR(solver.solution().objective_value, 0.0, 1e-7);
+    TEST_ASSERT(solver.solution().primal_values.size() == 1);
+    TEST_ASSERT_NEAR(solver.solution().primal_values[0], 0.0, 1e-7);
+    TEST_ASSERT(solver.solution().num_nodes >= 1);
+}
+REGISTER_TEST(test_milp_fractional_root_branches);
+
 void test_gpu_cpu_fallback() {
     const std::vector<Index> rows = {0, 0, 1, 1};
     const std::vector<Index> cols = {0, 1, 0, 1};

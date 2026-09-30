@@ -58,8 +58,11 @@ test: $(BIN_DIR)/suplex_tests $(BIN_DIR)/suplex_c_api_test
 	$(BIN_DIR)/suplex_c_api_test
 	$(BIN_DIR)/suplex --help >/dev/null
 	$(BIN_DIR)/suplex --algorithm primal data/examples/tiny.mps | grep -q "Status: OPTIMAL"
+	bash tests/integration/test_cli.sh $(BIN_DIR)/suplex $(CURDIR) $(BUILD_DIR)/cli-test-output
+	bash tests/integration/test_scripts.sh $(CURDIR)
 
 benchmark: $(BIN_DIR)/suplex_benchmark
+	bash tests/integration/test_benchmark.sh $(BIN_DIR)/suplex_benchmark $(CURDIR) $(BUILD_DIR)/benchmark-test-output
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)

@@ -9,6 +9,7 @@ option(SUPLEX_BUILD_TESTS "Build the test suite" ON)
 option(SUPLEX_BUILD_BENCHMARKS "Build the benchmark runner" ON)
 option(SUPLEX_BUILD_PYTHON "Build Python bindings" OFF)
 option(SUPLEX_ENABLE_GPU "Enable CUDA acceleration" OFF)
+option(SUPLEX_BUILD_P3_GTESTS "Build Person 3 GoogleTest suites when available" ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
     add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wall;-Wextra;-Werror>)
@@ -76,17 +77,52 @@ if(SUPLEX_BUILD_TESTS)
     add_executable(suplex_c_api_test tests/integration/test_c_api.c)
     target_link_libraries(suplex_c_api_test PRIVATE suplex)
     add_test(NAME suplex_c_api_client COMMAND suplex_c_api_test)
+    add_test(NAME suplex_download_script_contracts
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/test_scripts.sh
+        ${CMAKE_CURRENT_SOURCE_DIR})
+    add_test(NAME suplex_cli_full_contract
+        COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/test_cli.sh
+        $<TARGET_FILE:suplex_cli> ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}/cli-test-output)
+
+    if(SUPLEX_BUILD_P3_GTESTS)
+        find_package(GTest QUIET)
+        if(GTest_FOUND)
+            foreach(p3_suite IN ITEMS presolve branching cuts heuristics)
+                add_executable(suplex_p3_${p3_suite}_test tests/unit/milp/test_${p3_suite}.cpp)
+                target_link_libraries(suplex_p3_${p3_suite}_test PRIVATE suplex GTest::gtest)
+                target_include_directories(suplex_p3_${p3_suite}_test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+                add_test(NAME suplex_p3_${p3_suite} COMMAND suplex_p3_${p3_suite}_test)
+            endforeach()
+        else()
+            message(STATUS "GoogleTest not found: Person 3 standalone suites are source-only")
+        endif()
+    endif()
 endif()
 
 if(SUPLEX_BUILD_BENCHMARKS)
     add_executable(suplex_benchmark tests/benchmarks/benchmark_runner.cpp)
     target_link_libraries(suplex_benchmark PRIVATE suplex)
+    if(SUPLEX_BUILD_TESTS)
+        add_test(NAME suplex_benchmark_smoke
+            COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/test_benchmark.sh
+            $<TARGET_FILE:suplex_benchmark> ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_CURRENT_BINARY_DIR}/benchmark-test-output)
+    endif()
 endif()
 
 if(SUPLEX_BUILD_PYTHON)
     find_package(pybind11 CONFIG REQUIRED)
     pybind11_add_module(pysuplex src/api/python/bindings.cpp)
     target_link_libraries(pysuplex PRIVATE suplex)
+    if(SUPLEX_BUILD_TESTS)
+        find_package(Python3 COMPONENTS Interpreter REQUIRED)
+        add_test(NAME suplex_python_api
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/integration/test_python_api.py
+            ${CMAKE_CURRENT_SOURCE_DIR})
+        set_tests_properties(suplex_python_api PROPERTIES
+            ENVIRONMENT "PYTHONPATH=$<TARGET_FILE_DIR:pysuplex>")
+    endif()
 endif()
 
 install(TARGETS suplex suplex_cli)
