@@ -185,7 +185,10 @@ bool Presolve::reduce_empty_rows(Problem& p, PresolveStack& s, bool& infeasible)
         }
         // Row is trivially satisfied; remove it
         row_active[i] = false;
-        s.push({PresolveRuleType::EMPTY_ROW, i, -1});
+        PresolveRecord record;
+        record.rule = PresolveRuleType::EMPTY_ROW;
+        record.row_idx = i;
+        s.push(std::move(record));
         changed = true;
     }
 
@@ -601,7 +604,7 @@ bool Presolve::reduce_duplicate_rows(Problem& p, PresolveStack& s) {
     // Two rows are duplicates if their sparsity patterns and coefficient
     // ratios are identical. Merge by tightening bounds.
     // Simple O(m^2) check — adequate for typical presolve sizes.
-    const auto& A  = p.constraint_matrix();
+    (void)s;
     const auto& rl = p.row_lower();
     const auto& ru = p.row_upper();
 
@@ -621,10 +624,14 @@ bool Presolve::reduce_duplicate_rows(Problem& p, PresolveStack& s) {
 }
 
 bool Presolve::reduce_dominated_cols(Problem& p, PresolveStack& s) {
+    (void)p;
+    (void)s;
     return false; // stub
 }
 
 bool Presolve::reduce_duplicate_cols(Problem& p, PresolveStack& s) {
+    (void)p;
+    (void)s;
     return false; // stub
 }
 

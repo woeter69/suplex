@@ -1,76 +1,73 @@
-# Suplex Person 3 — Makefile (direct g++ build, no cmake required)
-CXX      := g++
-CXXFLAGS := -std=c++20 -Wall -Wextra -Wpedantic -g -O0 \
-            -Isrc \
-            -fsanitize=address,undefined
-LDFLAGS  := -fsanitize=address,undefined
+CXX ?= g++
+CC ?= gcc
+AR ?= ar
+CPPFLAGS := -I.
+CXXFLAGS ?= -O2 -g
+CXXFLAGS += -std=c++20 -Wall -Wextra -Werror -fPIC
+CFLAGS ?= -O2 -g
+CFLAGS += -std=c11 -Wall -Wextra -Werror
 
-# ── Sources ────────────────────────────────────────────────────────────────────
-CORE_SRC := src/core/core_stubs.cpp
+BUILD_DIR := build_make
+LIB_DIR := $(BUILD_DIR)/lib
+BIN_DIR := $(BUILD_DIR)/bin
 
-MILP_SRC := src/milp/presolve.cpp \
-            src/milp/node.cpp \
-            src/milp/branching.cpp \
-            src/milp/cuts.cpp \
-            src/milp/heuristics.cpp \
-            src/milp/branch_bound.cpp \
-            src/milp/conflict.cpp \
-            src/milp/milp_solver.cpp
+LIB_SOURCES := $(wildcard src/core/*.cpp) \
+               $(wildcard src/simplex/*.cpp) \
+               $(wildcard src/milp/*.cpp) \
+               $(wildcard src/io/*.cpp) \
+               $(filter-out src/api/python/bindings.cpp,$(wildcard src/api/*.cpp)) \
+               src/gpu/gpu_manager.cpp
+LIB_OBJECTS := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(LIB_SOURCES))
+LIBRARY := $(LIB_DIR)/libsuplex.a
 
-ALL_SRC := $(CORE_SRC) $(MILP_SRC)
+TEST_SOURCES := tests/unit/test_runner.cpp \
+                tests/unit/test_sparse_matrix.cpp \
+                tests/unit/test_lu.cpp \
+                tests/unit/test_simplex.cpp \
+                tests/unit/test_boundary.cpp \
+                tests/integration/test_integration.cpp
+TEST_OBJECTS := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(TEST_SOURCES))
 
-# ── Build directory ────────────────────────────────────────────────────────────
-BUILDDIR := build_make
+.PHONY: all test benchmark clean
 
-# ── Object files ──────────────────────────────────────────────────────────────
-OBJS := $(patsubst %.cpp,$(BUILDDIR)/%.o,$(ALL_SRC))
+all: $(BIN_DIR)/suplex
 
-# ── Libraries (static archive) ────────────────────────────────────────────────
-LIB := $(BUILDDIR)/libsuplex_milp.a
-
-# ── Test executables ──────────────────────────────────────────────────────────
-TEST_SRC := tests/unit/milp/test_presolve.cpp \
-            tests/unit/milp/test_branching.cpp \
-            tests/unit/milp/test_cuts.cpp \
-            tests/unit/milp/test_heuristics.cpp
-
-# We use a single-file compile for tests (no GTest in env → run syntax-check only)
-TEST_BINS := $(patsubst tests/unit/milp/%.cpp,$(BUILDDIR)/tests/%,$(TEST_SRC))
-
-# ── Default target: compile library ───────────────────────────────────────────
-.PHONY: all lib tests clean check
-
-all: lib
-
-lib: $(LIB)
-
-$(LIB): $(OBJS)
+$(LIBRARY): $(LIB_OBJECTS)
 	@mkdir -p $(dir $@)
-	ar rcs $@ $^
-	@echo "✅  Library built: $@"
+	$(AR) rcs $@ $^
 
-$(BUILDDIR)/%.o: %.cpp
+$(BIN_DIR)/suplex: $(BUILD_DIR)/cli/main.o $(LIBRARY)
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-# ── Syntax-check all sources without linking ──────────────────────────────────
-check:
-	@echo "Syntax-checking all sources..."
-	@for f in $(ALL_SRC); do \
-	    echo "  checking $$f ..."; \
-	    $(CXX) $(CXXFLAGS) -fsyntax-only $$f && echo "    OK" || echo "    FAIL $$f"; \
-	done
-	@echo "Done."
+$(BIN_DIR)/suplex_tests: CPPFLAGS += -DSUPLEX_SOURCE_DIR=\"$(CURDIR)\"
+$(BIN_DIR)/suplex_tests: $(TEST_OBJECTS) $(LIBRARY)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@
 
-# ── Build test objects (syntax check only — no GTest linkage needed) ──────────
-check-tests:
-	@echo "Syntax-checking test sources..."
-	@for f in $(TEST_SRC); do \
-	    echo "  checking $$f ..."; \
-	    $(CXX) $(CXXFLAGS) -fsyntax-only $$f && echo "    OK" || echo "    FAIL $$f"; \
-	done
-	@echo "Done."
+$(BIN_DIR)/suplex_c_api_test: $(BUILD_DIR)/tests/integration/test_c_api.o $(LIBRARY)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -lm -o $@
+
+$(BIN_DIR)/suplex_benchmark: $(BUILD_DIR)/tests/benchmarks/benchmark_runner.o $(LIBRARY)
+	@mkdir -p $(dir $@)
+	$(CXX) $(CXXFLAGS) $^ -o $@
+
+test: $(BIN_DIR)/suplex_tests $(BIN_DIR)/suplex_c_api_test
+	$(BIN_DIR)/suplex_tests
+	$(BIN_DIR)/suplex_c_api_test
+	$(BIN_DIR)/suplex --help >/dev/null
+	$(BIN_DIR)/suplex --algorithm primal data/examples/tiny.mps | grep -q "Status: OPTIMAL"
+
+benchmark: $(BIN_DIR)/suplex_benchmark
+
+$(BUILD_DIR)/%.o: %.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -rf $(BUILDDIR)
-	@echo "Cleaned."
+	rm -rf $(BUILD_DIR)

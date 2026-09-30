@@ -10,6 +10,8 @@ std::optional<Cut> ConflictAnalysis::analyse(
         const std::vector<std::pair<Index, BoundChange>>& branch_path,
         const Problem&            p) {
 
+    (void)node;
+
     if (farkas_ray.empty()) return std::nullopt;
 
     // Step 1: identify which columns appear in responsible rows
@@ -75,7 +77,6 @@ Cut ConflictAnalysis::build_nogood_cut(
     cut.name = "conflict";
 
     const auto& cu = p.col_upper();
-    const auto& cl = p.col_lower();
 
     for (const auto& [col, bc] : minimal_conflict) {
         // If branched DOWN (x_j <= floor): literal is x_j
