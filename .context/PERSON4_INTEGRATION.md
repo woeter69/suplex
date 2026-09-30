@@ -5,20 +5,20 @@ You are the glue that holds Suplex together. You build: (1) file parsers that re
 
 ## Deliverables Checklist
 
-- [ ] `src/io/mps_parser.h/cpp` — MPS file parser (fixed + free format) (5 days)
-- [ ] `src/io/lp_parser.h/cpp` — LP file parser (3 days)
-- [ ] `src/io/sol_writer.h/cpp` — Solution output writer (1 day)
-- [ ] `cli/main.cpp` — Command-line interface (2 days)
-- [ ] `src/api/suplex.h` — C API header (2 days)
-- [ ] `src/api/suplex_api.cpp` — C API implementation (2 days)
-- [ ] `src/api/python/bindings.cpp` — Python pybind11 bindings (3 days)
-- [ ] `src/gpu/gpu_manager.h/cpp` — GPU device management (2 days)
-- [ ] `src/gpu/cuda_spmv.cu` — GPU sparse matrix-vector multiply (3 days)
-- [ ] `src/gpu/cuda_pcg.cu` — GPU preconditioned conjugate gradient (3 days)
-- [ ] `tests/benchmarks/` — Benchmark runner infrastructure (3 days)
-- [ ] `scripts/` — Download scripts for benchmark sets (2 days)
-- [ ] `CMakeLists.txt` — Root build system (2 days)
-- [ ] Integration testing (4 days)
+- [x] `src/io/mps_parser.h/cpp` — MPS file parser (fixed + free format) (5 days)
+- [x] `src/io/lp_parser.h/cpp` — LP file parser (3 days)
+- [x] `src/io/sol_writer.h/cpp` — Solution output writer (1 day)
+- [x] `cli/main.cpp` — Command-line interface (2 days)
+- [x] `src/api/suplex.h` — C API header (2 days)
+- [x] `src/api/suplex_api.cpp` — C API implementation (2 days)
+- [x] `src/api/python/bindings.cpp` — Python pybind11 bindings (3 days)
+- [x] `src/gpu/gpu_manager.h/cpp` — GPU device management (2 days)
+- [x] `src/gpu/cuda_spmv.cu` — GPU sparse matrix-vector multiply (3 days)
+- [x] `src/gpu/cuda_pcg.cu` — GPU preconditioned conjugate gradient (3 days)
+- [x] `tests/benchmarks/` — Benchmark runner infrastructure (3 days)
+- [x] `scripts/` — Download scripts for benchmark sets (2 days)
+- [x] `CMakeLists.txt` — Root build system (2 days)
+- [x] Integration testing (4 days)
 
 Total: ~37 working days
 
