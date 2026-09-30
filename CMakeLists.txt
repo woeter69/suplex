@@ -46,6 +46,7 @@ add_executable(suplex_test_runner
     tests/unit/test_sparse_matrix.cpp
     tests/unit/test_lu.cpp
     tests/unit/test_simplex.cpp
+    tests/unit/test_boundary.cpp
 )
 target_link_libraries(suplex_test_runner PRIVATE suplex_simplex suplex_core)
 target_include_directories(suplex_test_runner PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
