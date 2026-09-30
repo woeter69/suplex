@@ -130,6 +130,7 @@ Cut CutGenerator::mir_from_row(const std::vector<Real>& row_coeffs,
                                 Real rhs,
                                 const Problem& p,
                                 const Solution& lp_sol) const {
+    (void)lp_sol;
     Real f0 = rhs - std::floor(rhs);
     Cut cut;
     cut.type = CutType::MIR;
@@ -170,7 +171,6 @@ std::vector<Cut> CutGenerator::mir_cuts(const Problem&  p,
                                          int max_cuts) {
     std::vector<Cut> cuts;
     const auto& A  = p.constraint_matrix();
-    const auto& rl = p.row_lower();
     const auto& ru = p.row_upper();
 
     for (Index i = 0; i < p.num_rows(); ++i) {
@@ -223,6 +223,7 @@ Real CutGenerator::lifting_coefficient(const std::vector<Index>& cover,
                                         const std::vector<Real>&  coeffs,
                                         Index   new_var_idx, Real new_var_coeff,
                                         Real    knapsack_rhs) const {
+    (void)new_var_idx;
     // Simplified sequential lifting: compute how much new_var can participate
     // without violating the cover inequality.
     Real cover_sum = 0.0;

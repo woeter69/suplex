@@ -287,6 +287,7 @@ SolverStatus BranchBound::solve_root_lp(const Problem& p, Solution& sol) {
 // ── separate_cuts ─────────────────────────────────────────────────────────────
 int BranchBound::separate_cuts(const Problem& p, const Solution& lp_sol,
                                 Problem& p_with_cuts) {
+    (void)p_with_cuts;
     CutGenerator gen(p.num_cols());
     int total = 0;
 
@@ -380,6 +381,7 @@ bool BranchBound::is_integer_feasible(const Problem& p,
 // ── try_update_incumbent ──────────────────────────────────────────────────────
 void BranchBound::try_update_incumbent(const Problem& p, const Solution& sol,
                                         Index /*base_rows*/) {
+    (void)p;
     if (sol.objective_value < incumbent_obj_ - EPS_OPTIMALITY) {
         incumbent_obj_ = sol.objective_value;
         incumbent_sol_ = sol;

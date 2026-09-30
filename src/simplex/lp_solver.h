@@ -37,6 +37,9 @@ public:
 
     // Basis inspection
     virtual const std::vector<Index>& get_basis() const = 0;
+
+    /** Optional infeasibility certificate. Solvers without one return empty. */
+    virtual std::vector<Real> get_farkas_ray() const { return {}; }
 };
 
 } // namespace suplex

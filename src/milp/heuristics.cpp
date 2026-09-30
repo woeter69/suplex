@@ -299,6 +299,7 @@ std::optional<Solution> Heuristics::rins(const Problem&  p,
                                           const Solution& lp_sol,
                                           const Solution& incumbent,
                                           int64_t         max_nodes) {
+    (void)max_nodes;
     if (!lp_solver_) return std::nullopt;
 
     const auto& vt = p.var_types();

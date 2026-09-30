@@ -16,8 +16,8 @@ namespace suplex {
 class MILPCallback {
 public:
     virtual ~MILPCallback() = default;
-    virtual void on_new_incumbent(const Solution& sol) {}
-    virtual void on_node_solved(int64_t node_id, Real bound) {}
+    virtual void on_new_incumbent(const Solution&) {}
+    virtual void on_node_solved(int64_t, Real) {}
     virtual bool should_terminate() { return false; }
 };
 
